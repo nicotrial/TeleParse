@@ -29,7 +29,7 @@ def printBanner():
 
 def argsParsing():
 	parser = argparse.ArgumentParser(description='Extract data from telegram app')
-	parser.add_argument('-f',action='store'		,dest='path'		,required=False, help='Path of onion domains file')
+	parser.add_argument('-f',action='store'		,dest='path'		,required=False, help='Path of db file')
 	parser.add_argument('-ex',action='store_true',dest='extract'		,required=False, help='Autoextract Telegram app from phone')
 	parser.add_argument('-b',action='store_true',dest='banner'		,required=False, help='Do not show Banner')
 	args = parser.parse_args()
@@ -44,7 +44,16 @@ def extractApp():
 	#os.system('''./Tools/platform-tools/adb pull /data/data/com.whatsapp/databases/msgstore.db dump''')
 	hackerPrint("[-] DONE!\n","GOOD", True)
 
-
+def loadFile(file):
+	print("loading file " + file)
+	try:
+		conn = sqlite3.connect(file)
+		c = conn.cursor()
+		print("OK")
+		for row in c.execute('SELECT * FROM users WHERE uid IN (SELECT uid FROM contacts)'):
+			print(row[1])
+	except Exception as e:
+		raise e
 
 def main():
 	args = argsParsing()
@@ -52,6 +61,8 @@ def main():
 		printBanner()
 	if args.extract:
 		extractApp()
+	if args.path:
+		loadFile(args.path)
 
 if __name__ == '__main__':
 	main()

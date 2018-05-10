@@ -7,6 +7,7 @@ import os
 import time
 import binascii
 import struct
+import re
 
 banner = r"""
 ___________    .__        __________                      
@@ -73,16 +74,18 @@ def extractMsg(c, conn):
     messagestream = c.fetchall()
     #conn.commit()
     for row in messagestream:
+        #print (row[5])
         tramacursor = 0
         print("-----====-----")
-        trama = row[5][tramacursor:tramacursor + 4]
+        #hackerPrint("-----====-----\n", "GOOD", True)
+        trama = buffer(row[5][tramacursor:tramacursor + 4])
         tramacursor = tramacursor + 4
         # print (hex(struct.unpack('<i',trama)[0]))
         header = struct.unpack('<i', trama)[0]
         print ("Message ID: " + str(row[0]))
         if header == 0x44f9b43d:
             print("TL_message")
-            trama = row[5][tramacursor:tramacursor + 4]
+            trama = buffer(row[5][tramacursor:tramacursor + 4])
             tramacursor = tramacursor + 4
             flags = struct.unpack('<i', trama)[0]
             print ("Flags=" + str(bin(flags)))
@@ -101,14 +104,14 @@ def extractMsg(c, conn):
             # print(hex(flags & 16384))
             if (flags & 16384) is not 0x0:
                 print("---post")
-            trama = row[5][tramacursor:tramacursor + 4]
+            trama = buffer(row[5][tramacursor:tramacursor + 4])
             tramacursor = tramacursor + 4
             ids = struct.unpack('<i', trama)[0]
             print ("ID="+str(ids))
             # print(hex(flags & 16))
             if (flags & 256) is not 0x0:
                 print("---from_id")
-                trama = row[5][tramacursor:tramacursor + 4]
+                trama = buffer(row[5][tramacursor:tramacursor + 4])
                 tramacursor = tramacursor + 4
                 from_id = struct.unpack('<i', trama)[0]
                 print(from_id)
@@ -120,35 +123,47 @@ def extractMsg(c, conn):
             # print(hex(flags & 16))
             if (flags & 4) is not 0x0:
                 print("---fwd_from")
-                trama = row[5][tramacursor:tramacursor + 4]
+                trama = buffer(row[5][tramacursor:tramacursor + 4])
                 tramacursor = tramacursor + 4
                 fwd_from = struct.unpack('<i', trama)[0]
                 print("    TODO Datos de fwd_from: "+str(fwd_from))
             # print(hex(flags & 2048))
             if (flags & 2048) is not 0x0:
                 print("---via_bot_id")
-                trama = row[5][tramacursor:tramacursor + 4]
+                trama = buffer(row[5][tramacursor:tramacursor + 4])
                 tramacursor = tramacursor + 4
                 via_bot_id = struct.unpack('<i', trama)[0]
                 print("    Datos de via_bot_id="+str(via_bot_id))
             # print(hex(flags & 8))
             if (flags & 8) is not 0x0:
                 print("---reply_to_msg_id: ")
-                trama = row[5][tramacursor:tramacursor + 4]
+                trama = buffer(row[5][tramacursor:tramacursor + 4])
                 tramacursor = tramacursor + 4
                 reply_to_msg_id = struct.unpack('<i', trama)[0]
                 print("    Datos de reply_to_msg_id: "+str(reply_to_msg_id))
-            trama = row[5][tramacursor:tramacursor + 4]
+            trama = buffer(row[5][tramacursor:tramacursor + 4])
             tramacursor = tramacursor + 4
-            date = struct.unpack('<i', trama)[0]
+            date = struct.unpack('<I', trama)[0]
             print("DATE="+str(date))
-            trama = row[5][tramacursor:tramacursor + 4]
-            tramacursor = tramacursor + 4
-            message = struct.unpack('<i', trama)[0]
-            print(message)
+
+            epochtime = float(row[4])
+            print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(epochtime)))
             # print(hex(flags & 512))
             if (flags & 512) is not 0x0:
                 print("---media")
+            else:
+                trama = buffer(row[5][tramacursor:])
+                tramacursor = tramacursor + 32
+                # message = struct.unpack('<ssssssssssssssss', trama)[0]
+                bytes = int(binascii.hexlify(trama[8:9]), 16)
+                print ("Tamañooo")
+                print (bytes)
+                #bytes = int(trama[7:9])
+                #struct.unpack('i', bytes)
+                message = trama[9:9 + bytes]
+                print(binascii.hexlify(message))
+                print(message)
+                #print(hex(trama[0:9]))
             # print(hex(flags & 64))
             if (flags & 64) is not 0x0:
                 print("---reply_markup")

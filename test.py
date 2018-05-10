@@ -158,6 +158,7 @@ def extractMsg(c, conn):
                 bytes = int(binascii.hexlify(trama[8:9]), 16)
                 print ("Tamañooo")
                 print (bytes)
+                tramacursor = tramacursor + bytes
                 #bytes = int(trama[7:9])
                 #struct.unpack('i', bytes)
                 message = trama[9:9 + bytes]

@@ -8,7 +8,10 @@ import struct
 import os
 import time
 
+import sys
 
+reload(sys)
+sys.setdefaultencoding('utf8')
 
 banner = r"""
 ___________    .__        __________                      
@@ -171,7 +174,7 @@ def extractMsg(c, conn):
             trama = row[5][tramacursor:tramacursor + 4]
             tramacursor = tramacursor + 4
             date = struct.unpack('<I', trama)[0]
-            print("DATE=" + str(date))
+            print("DATE from data stream=" + str(date))
             epochtime = float(row[4])
             print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(epochtime)))
 
@@ -180,19 +183,55 @@ def extractMsg(c, conn):
                 # Si es media imprimimos el mesaje hay tambien datos de la ubicacion de el alrchivo guardado hay que intentar sacar esto tambien
                 print("---media")
                 trama = row[5][tramacursor:]
-                tramacursor = tramacursor + 32
+                print(binascii.hexlify(trama[8:9]))
+                print(binascii.hexlify(trama))
+                fromuid = struct.unpack('<i', trama[0:4])[0]
+                print("from uid= " + str(fromuid))
+                c.execute('SELECT name FROM chats WHERE uid=%s' % fromuid)
+                chatsstream = c.fetchall()
+                # conn.commit()
+                for rowss in chatsstream:
+                    print(rowss[0])
+                c.execute('SELECT name FROM users WHERE uid=%s' % fromuid)
+                chatsstream = c.fetchall()
+                # conn.commit()
+                for rowss in chatsstream:
+                    print(rowss[0])
                 bytes = int(binascii.hexlify(trama[8:9]), 16)
                 print (bytes)
                 tramacursor = tramacursor + bytes
                 message = trama[9:9 + bytes]
                 #print(binascii.hexlify(message))
-                print(message)
+                print(message.replace("\00", ""))
+                f = open('workfile', 'a')
+                f.write(str(message))
+                f.close()
                 #print(hex(trama[0:9]))
+                #trama = row[5][tramacursor:tramacursor + 4]
+                #tramacursor = tramacursor + 4
+                #print(binascii.hexlify(trama))
+                #media = struct.unpack('<i', trama)[0]
+                #print("    TODO Datos de media: " + str(media))
             else:
                 # si no es media lo que hacemos el leer el los primeros bytes que nos dan informacion de el tamaño y con esto mostramos el mensaje (hay mensajes que el tamaño no esta en el mismo lugoar.. si es de mas de 256 caracteres los tamaños de los no se donde estan)
                 print("---Regular Message")
                 trama = row[5][tramacursor:]
                 print(binascii.hexlify(trama))
+                fromuid = struct.unpack('<i', trama[0:4])[0]
+                print ("from uid= "+ str(fromuid))
+                c.execute('SELECT name FROM chats WHERE uid=%s' % fromuid)
+                chatsstream = c.fetchall()
+                # conn.commit()
+                for rowss in chatsstream:
+                    print(rowss[0])
+                c.execute('SELECT name FROM users WHERE uid=%s' % fromuid)
+                chatsstream = c.fetchall()
+                # conn.commit()
+                for rowss in chatsstream:
+                    print(rowss[0])
+                fromuid = struct.unpack('<i', trama[4:8])[0]
+                print("Timestamp from message data= " + str(fromuid))
+                print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(fromuid)))
                 print(binascii.hexlify(trama[8:9]))
                 tramacursor = tramacursor + 32
                 bytes = int(binascii.hexlify(trama[8:9]), 16)
@@ -202,31 +241,62 @@ def extractMsg(c, conn):
                 print (bytes)
                 tramacursor = tramacursor + bytes
                 message = trama[9:9 + bytes]
-                print(message)
+                print(message.replace("\00", ""))
 
             #print(hex(flags & 64))
             if (flags & 64) is not 0x0:
                 print("---reply_markup")
+                trama = row[5][tramacursor:tramacursor + 4]
+                tramacursor = tramacursor + 4
+                reply_markup = struct.unpack('<i', trama)[0]
+                print("    TODO Datos de reply_markup: " + str(reply_markup))
 
             #print(hex(flags & 128))
             if (flags & 128) is not 0x0:
                 print("---magic")
+                #trama = row[5][tramacursor:tramacursor + 4]
+                tramacursor = tramacursor + 4
+                #magic = struct.unpack('<i', trama)[0]
+                #print("    TODO Datos de magic: " + str(magic))
 
             #print(hex(flags & 1024))
             if (flags & 1024) is not 0x0:
                 print("---views")
+                #trama = row[5][tramacursor:tramacursor + 4]
+                tramacursor = tramacursor + 4
+                #views = struct.unpack('<i', trama)[0]
+                #print("    TODO Datos de views: " + str(views))
 
             #print(hex(flags & 2048))
             if (flags & 32768) is not 0x0:
                 print("---edit_date")
+                #trama = row[5][tramacursor:tramacursor + 4]
+                tramacursor = tramacursor + 4
+                #edit_date = struct.unpack('<i', trama)[0]
+                #print("    TODO Datos de edit_date: " + str(edit_date))
 
             # print(hex(flags & 2048))
             if (flags & 65536) is not 0x0:
                 print("---post_author")
+                #trama = row[5][tramacursor:]
+                #print(binascii.hexlify(trama))
+                #print(binascii.hexlify(trama[8:9]))
+                #bytes = int(binascii.hexlify(trama[8:9]), 16)
+                #bytes = int.from_bytes(trama[0:9], byteorder='little')
+                #print("hola")
+                #print("Tamañooo")
+                #print(bytes)
+                #tramacursor = tramacursor + bytes
+                #post_author = trama[9:9 + bytes]
+                #print(post_author)
 
             # print(hex(flags & 2048))
             if (flags & 131072) is not 0x0:
                 print("---grouped_id")
+                trama = row[5][tramacursor:tramacursor + 4]
+                tramacursor = tramacursor + 4
+                grouped_id = struct.unpack('<i', trama)[0]
+                print("    TODO Datos de grouped_id: " + str(grouped_id))
 
         else:
             print ("HEADER")

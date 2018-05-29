@@ -3,11 +3,12 @@
 from HackerPrint import hackerPrint, hackerPrintErr
 import argparse
 import sqlite3
-import os
-import time
 import binascii
 import struct
-import re
+import os
+import time
+
+
 
 banner = r"""
 ___________    .__        __________                      
@@ -67,7 +68,8 @@ def loadFile(file):
 def extractContacts(c, conn):
     for row in c.execute('SELECT * FROM users WHERE uid IN (SELECT uid FROM contacts)'):
         print(row[1])
-
+        print(row[0])
+        print("----")
 
 def extractMsg(c, conn):
     # Sacamos dotos los datos de la base de datos de messages
@@ -80,7 +82,7 @@ def extractMsg(c, conn):
         tramacursor = 0
         print("-----====-----")
         #hackerPrint("-----====-----\n", "GOOD", True)
-        trama = buffer(row[5][tramacursor:tramacursor + 4])
+        trama = row[5][tramacursor:tramacursor + 4]
         tramacursor = tramacursor + 4
         #print (hex(struct.unpack('<i',trama)[0]))
         header = struct.unpack('<i', trama)[0]
@@ -94,27 +96,36 @@ def extractMsg(c, conn):
             tramacursor = tramacursor + 4
             flags = struct.unpack('<i', trama)[0]
             print ("Flags=" + str(bin(flags)))
-            #print(hex(flags & 2))
+            print(hex(flags))
+            print(hex(flags & 2))
+
             if (flags & 2) is not 0x0:
                 # Este flag indica que es un mensaje saliente nuestro
                 print("---out")
+
             #print(hex(flags & 16))
             if (flags & 16) is not 0x0:
                 print("---mentioned")
                 # Este flag indica que hemos sido mencionados en el mensaje
+
             #print(hex(flags & 32))
             if (flags & 32) is not 0x0:
                 print("---media_unread")
+
             #print(hex(flags & 8192))
             if (flags & 8192) is not 0x0:
                 print("---silent")
+
             #print(hex(flags & 16384))
             if (flags & 16384) is not 0x0:
                 print("---post")
+
+            #
             trama = row[5][tramacursor:tramacursor + 4]
             tramacursor = tramacursor + 4
             ids = struct.unpack('<i', trama)[0]
             print ("ID=" + str(ids))
+
             #print(hex(flags & 16))
             if (flags & 256) is not 0x0:
                 print("---from_id")
@@ -127,6 +138,7 @@ def extractMsg(c, conn):
                 # conn.commit()
                 for rowss in usersstream:
                     print(rowss[0])
+
             #print(hex(flags & 16))
             if (flags & 4) is not 0x0:
                 print("---fwd_from")
@@ -139,6 +151,7 @@ def extractMsg(c, conn):
                 # conn.commit()
                 for rowss in usersstream:
                     print(rowss[0])
+
             #print(hex(flags & 2048))
             if (flags & 2048) is not 0x0:
                 print("---via_bot_id")
@@ -146,6 +159,7 @@ def extractMsg(c, conn):
                 tramacursor = tramacursor + 4
                 via_bot_id = struct.unpack('<i', trama)[0]
                 print("    Datos de via_bot_id=" + str(via_bot_id))
+
             #print(hex(flags & 8))
             if (flags & 8) is not 0x0:
                 print("---reply_to_msg_id: ")
@@ -153,13 +167,14 @@ def extractMsg(c, conn):
                 tramacursor = tramacursor + 4
                 reply_to_msg_id = struct.unpack('<i', trama)[0]
                 print("    Datos de reply_to_msg_id: " + str(reply_to_msg_id))
+
             trama = row[5][tramacursor:tramacursor + 4]
             tramacursor = tramacursor + 4
             date = struct.unpack('<I', trama)[0]
             print("DATE=" + str(date))
-
             epochtime = float(row[4])
             print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(epochtime)))
+
             #print(hex(flags & 512))
             if (flags & 512) is not 0x0:
                 # Si es media imprimimos el mesaje hay tambien datos de la ubicacion de el alrchivo guardado hay que intentar sacar esto tambien
@@ -167,7 +182,6 @@ def extractMsg(c, conn):
                 trama = row[5][tramacursor:]
                 tramacursor = tramacursor + 32
                 bytes = int(binascii.hexlify(trama[8:9]), 16)
-                print ("Tamañooo")
                 print (bytes)
                 tramacursor = tramacursor + bytes
                 message = trama[9:9 + bytes]
@@ -178,33 +192,38 @@ def extractMsg(c, conn):
                 # si no es media lo que hacemos el leer el los primeros bytes que nos dan informacion de el tamaño y con esto mostramos el mensaje (hay mensajes que el tamaño no esta en el mismo lugoar.. si es de mas de 256 caracteres los tamaños de los no se donde estan)
                 print("---Regular Message")
                 trama = row[5][tramacursor:]
+                print(binascii.hexlify(trama))
+                print(binascii.hexlify(trama[8:9]))
                 tramacursor = tramacursor + 32
-                # message = struct.unpack('<ssssssssssssssss', trama)[0]
                 bytes = int(binascii.hexlify(trama[8:9]), 16)
+                #bytes = int.from_bytes(trama[0:9], byteorder='little')
+                print ("hola")
                 print ("Tamañooo")
                 print (bytes)
                 tramacursor = tramacursor + bytes
-                # bytes = int(trama[7:9])
-                # struct.unpack('i', bytes)
                 message = trama[9:9 + bytes]
-                #print(binascii.hexlify(message))
                 print(message)
-                # print(hex(trama[0:9]))
+
             #print(hex(flags & 64))
             if (flags & 64) is not 0x0:
                 print("---reply_markup")
+
             #print(hex(flags & 128))
             if (flags & 128) is not 0x0:
                 print("---magic")
+
             #print(hex(flags & 1024))
             if (flags & 1024) is not 0x0:
                 print("---views")
+
             #print(hex(flags & 2048))
             if (flags & 32768) is not 0x0:
                 print("---edit_date")
+
             # print(hex(flags & 2048))
             if (flags & 65536) is not 0x0:
                 print("---post_author")
+
             # print(hex(flags & 2048))
             if (flags & 131072) is not 0x0:
                 print("---grouped_id")

@@ -11,9 +11,9 @@ print(res.content)
 
 settings1 = {
         "mappings": {
-            "telegram-msg": {
+            "telegram": {
                 "properties": {
-                    "fecha": {
+                    "date": {
                         "type": "date",
                         "format": "epoch_millis"
                     },
@@ -24,7 +24,7 @@ settings1 = {
 res1 = es.indices.create(index='testing', ignore=400, body=settings1)
 
 print (datetime.now())
-print time.time()
+print (time.time())
 print (time.localtime(time.time()))
 hackerPrintErr("\n[!] Esto es una mierda y no funciona \n", "ERROR", True)
 
@@ -32,12 +32,12 @@ hackerPrintErr("\n[!] Esto es una mierda y no funciona \n", "ERROR", True)
 
 res1 = es.index(
     index="testing",
-    doc_type="telegram-msg",
+    doc_type="telegram",
     id=1,
     body={
         "msg.sender.id": "2",
         "msg.sender.first_name": "nombre",
-        "fecha": float(time.time())
+        "date": 1514764800000
     }
 )
 print("done")

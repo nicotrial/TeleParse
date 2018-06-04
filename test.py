@@ -80,6 +80,10 @@ def extractMsg(c, conn):
     messagestream = c.fetchall()
     # conn.commit()
     for row in messagestream:
+        message = ""
+        username = ""
+        fromuid = 0
+
         # solo pillamos el 5 ya que esta es el que contiene el datastream de telegram
         # print (row[5])
         tramacursor = 0
@@ -200,12 +204,13 @@ def extractMsg(c, conn):
                 bytes = int(binascii.hexlify(trama[8:9]), 16)
                 print (bytes)
                 tramacursor = tramacursor + bytes
-                message = trama[9:9 + bytes]
+                message = str(trama[9:9 + bytes])
                 #print(binascii.hexlify(message))
                 print(message.replace("\00", ""))
-                f = open('workfile', 'a')
-                f.write(str(message))
-                f.close()
+                #f = open('workfile', 'a')
+                #f.write(str(message))
+                #f.close()
+                
                 #print(hex(trama[0:9]))
                 #trama = row[5][tramacursor:tramacursor + 4]
                 #tramacursor = tramacursor + 4
@@ -224,14 +229,16 @@ def extractMsg(c, conn):
                 # conn.commit()
                 for rowss in chatsstream:
                     print(rowss[0])
+                    username = rowss[0]
                 c.execute('SELECT name FROM users WHERE uid=%s' % fromuid)
                 chatsstream = c.fetchall()
                 # conn.commit()
                 for rowss in chatsstream:
                     print(rowss[0])
-                fromuid = struct.unpack('<i', trama[4:8])[0]
-                print("Timestamp from message data= " + str(fromuid))
-                print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(fromuid)))
+                    username = rowss[0]
+                timestamp = struct.unpack('<i', trama[4:8])[0]
+                print("Timestamp from message data= " + str(timestamp))
+                print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp)))
                 print(binascii.hexlify(trama[8:9]))
                 tramacursor = tramacursor + 32
                 bytes = int(binascii.hexlify(trama[8:9]), 16)
@@ -240,7 +247,7 @@ def extractMsg(c, conn):
                 print ("Tamañooo")
                 print (bytes)
                 tramacursor = tramacursor + bytes
-                message = trama[9:9 + bytes]
+                message = str(trama[9:9 + bytes])
                 print(message.replace("\00", ""))
 
             #print(hex(flags & 64))
@@ -298,6 +305,27 @@ def extractMsg(c, conn):
                 grouped_id = struct.unpack('<i', trama)[0]
                 print("    TODO Datos de grouped_id: " + str(grouped_id))
 
+            print("#####################")
+            print ("----data to send---")
+            print (username)
+            print int(epochtime * 1000.0)
+            print(message.replace("\00", ""))
+            print ("----end data to send---")
+            print("#####################")
+
+            res1 = es.index(
+                index="testing",
+                doc_type="telegram",
+                id=int(epochtime*1000.0),
+                body={
+                    "msg.sender.id": fromuid,
+                    "msg.sender.first_name": username,
+                    "msg.text":"test",
+                    "date": int(epochtime*1000.0)
+                }
+            )
+            print("done")
+
         else:
             print ("HEADER")
             print (hex(header))
@@ -317,6 +345,33 @@ def extractMsg(c, conn):
                 #	print(hex(valor & 0x00008000))
                 #	print (row[5])
             """
+
+        from elasticsearch import Elasticsearch
+        from HackerPrint import hackerPrint, hackerPrintErr
+        import time
+        from datetime import datetime
+
+        es = Elasticsearch([{'host': 'localhost', 'port': 9200}])
+
+        import requests
+        res = requests.get('http://localhost:9200')
+        print(res.content)
+
+        settings1 = {
+            "mappings": {
+                "telegram": {
+                    "properties": {
+                        "date": {
+                            "type": "date",
+                            "format": "epoch_millis"
+                        },
+                    }
+                },
+            }
+        }
+        res1 = es.indices.create(index='testing', ignore=400, body=settings1)
+
+
 
 
 def main():

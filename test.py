@@ -210,7 +210,7 @@ def extractMsg(c, conn):
                 #f = open('workfile', 'a')
                 #f.write(str(message))
                 #f.close()
-                
+
                 #print(hex(trama[0:9]))
                 #trama = row[5][tramacursor:tramacursor + 4]
                 #tramacursor = tramacursor + 4
@@ -308,8 +308,8 @@ def extractMsg(c, conn):
             print("#####################")
             print ("----data to send---")
             print (username)
-            print int(epochtime * 1000.0)
-            print(message.replace("\00", ""))
+            print (int(epochtime * 1000.0))
+            texto = (message.replace("\00", "")).decode('utf-8', 'ignore')
             print ("----end data to send---")
             print("#####################")
 
@@ -320,10 +320,11 @@ def extractMsg(c, conn):
                 body={
                     "msg.sender.id": fromuid,
                     "msg.sender.first_name": username,
-                    "msg.text":"test",
+                    "msg.text":str(texto).strip(),
                     "date": int(epochtime*1000.0)
                 }
             )
+            print(res1)
             print("done")
 
         else:

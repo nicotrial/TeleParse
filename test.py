@@ -38,9 +38,12 @@ def argsParsing():
     parser = argparse.ArgumentParser(description='Extract data from telegram app')
     parser.add_argument('-f', action='store', dest='path', required=True, help='Path of db file')
     parser.add_argument('-e', action='store_true', dest='extractApp', required=False,help='Autoextract Telegram app from phone')
-    parser.add_argument('-ec', action='store_true', dest='extractContacts', required=False,help='Show Telegram Messages')
+    parser.add_argument('-ec', action='store_true', dest='extractContacts', required=False,help='Show Telegram Contacts')
     parser.add_argument('-eu', action='store_true', dest='extractUsers', required=False,help='Show Telegram Users')
-    parser.add_argument('-em', action='store_true', dest='extractMsg', required=False, help='Show Telegram Contacts')
+    parser.add_argument('-eb', action='store_true', dest='extractBots', required=False,help='Show Telegram Bots')
+    parser.add_argument('-eblk', action='store_true', dest='extractBlockedUsers', required=False, help='Show Telegram Blocked Users')
+    parser.add_argument('-em', action='store_true', dest='extractMsg', required=False, help='Show Telegram Messages')
+    parser.add_argument('-eme', action='store_true', dest='extractMsgElastic', required=False, help='Extract Telegram Messages to Elastic')
     parser.add_argument('-b', action='store_true', dest='banner', required=False, help='Do not show Banner')
     args = parser.parse_args()
     return args
@@ -74,7 +77,7 @@ def extractContacts(c, conn):
         print(row[0])
         print("----------==============-------------")
 
-def extractUsers(c, conn):
+def extractUsers1(c, conn):
     print("----------=======Extracting last Messages=======-------------")
     c.execute('SELECT * FROM dialogs WHERE did IN (SELECT uid FROM users)')
     resultado = c.fetchall()
@@ -122,7 +125,7 @@ def extractBlockedUsers(c, conn):
         print(row)
         print("----------==============-------------")
 
-def extractUsers1(c, conn):
+def extractUsers(c, conn):
     print("----------=======Extracting All Users=======-------------")
     for row in c.execute('SELECT * FROM users'):
         print(row[1])
@@ -314,6 +317,29 @@ def decodeMsg(c, conn, message):
 
 
 def extractMsg(c, conn):
+    c.execute('SELECT * FROM messages')
+    messagestream = c.fetchall()
+    for row in messagestream:
+        data = decodeMsg(c, conn, row[5])
+        #print(data)
+        print("HeaderHEX: " + str(data[0]))
+        print("HeaderType: " + str(data[1]))
+        print("Flags: " + str(data[2]))
+        print("Ids: " + str(data[3]))
+        print("TramaMensaje: " + str(data[4]))
+        print("MessageSize: " + str(data[5]))
+        print("Message: " + str(data[6]))
+        print("Date: " + str(data[7]))
+        print("TimeStamp: " + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(data[8]))))
+        print("Fromuid: " + str(data[9]))
+        print("fwd_from_name: " + str(data[10]))
+        print("fwd_id_name: " + str(data[11]))
+        print("UsernameUsers: " + str(data[12]))
+        print("UsernameChats: " + str(data[13]))
+        print("------------=============-------------------")
+    print("done")
+
+def extractMsgEL(c, conn):
     from elasticsearch import Elasticsearch
 
     es = Elasticsearch([{'host': 'localhost', 'port': 9200}])
@@ -396,8 +422,14 @@ def main():
         extractContacts(c, conn)
     if args.extractMsg:
         extractMsg(c, conn)
+    if args.extractMsgElastic:
+        extractMsgEL(c, conn)
     if args.extractUsers:
         extractUsers(c, conn)
+    if args.extractBots:
+        extractBots(c, conn)
+    if args.extractBlockedUsers:
+        extractBlockedUsers(c, conn)
 
 
 if __name__ == '__main__':

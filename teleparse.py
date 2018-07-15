@@ -13,6 +13,8 @@ import time
 reload(sys)
 sys.setdefaultencoding('utf8')
 
+twrplocation="./Tools/TWRP/twrp.img"
+
 banner = r"""
 ___________    .__        __________                      
 \__    ___/___ |  |   ____\______   \_____ _______  __________
@@ -52,11 +54,11 @@ def argsParsing():
 
 def extractApp():
     hackerPrint("[-] Extracting telegram app data from phone\n", "GOOD", True)
-    os.system("""./Tools/platform-tools/adb""")
-    # os.system("""./Tools/platform-tools/adb reboot bootloader""")
-    # os.system("""./Tools/platform-tools/fastboot boot ./Tools/TWRP/twrp-2.8.7.1-hammerhead.img""")
+    os.system("""./Tools/platform-tools/adb reboot bootloader""")
     time.sleep(20)
-    # os.system('''./Tools/platform-tools/adb pull /data/data/com.whatsapp/databases/msgstore.db dump''')
+    os.system("""./Tools/platform-tools/fastboot boot ./Tools/TWRP/twrp.img""")
+    time.sleep(20)
+    os.system('''./Tools/platform-tools/adb pull /data/data/org.telegram.messenger/files/cache4.db dump''')
     hackerPrint("[-] DONE!\n", "GOOD", True)
 
 
@@ -72,6 +74,13 @@ def loadFile(file):
 
 
 def extractContacts(c, conn):
+    print("----------=======Extracting Known Contacts=======-------------")
+    for row in c.execute('SELECT * FROM users WHERE uid IN (SELECT uid FROM contacts)'):
+        print(row[1])
+        print(row[0])
+        print("----------==============-------------")
+
+def extractContactsNumbers(c, conn):
     print("----------=======Extracting Known Contacts=======-------------")
     for row in c.execute('SELECT * FROM users WHERE uid IN (SELECT uid FROM contacts)'):
         print(row[1])
@@ -139,7 +148,7 @@ def decodeMsg(c, conn, message):
     usernameChats = ""
     flagsActive = []
     fromuid = 0
-    tramaMsg = ""
+    tramaMsg = "nada"
     timestamp = 0.0
     size = 0
     fwd_from_name = ""
@@ -231,51 +240,40 @@ def decodeMsg(c, conn, message):
         tramacursor = tramacursor + 4
         date = struct.unpack('<I', trama)[0]
 
+        trama = message[tramacursor:tramacursor + 4]
+        tramacursor = tramacursor + 4
+        #tramaMsg = binascii.hexlify(trama)
+        fromuid = struct.unpack('<i', trama)[0]
+        c.execute('SELECT name FROM chats WHERE uid=%s' % fromuid)
+        chatsstream = c.fetchall()
+        for rowss in chatsstream:
+            usernameChats = rowss[0]
+        c.execute('SELECT name FROM users WHERE uid=%s' % fromuid)
+        chatsstream = c.fetchall()
+        # conn.commit()
+        for rowss in chatsstream:
+            usernameUsers = rowss[0]
+        trama = message[tramacursor:tramacursor + 4]
+        tramacursor = tramacursor + 4
+        timestamp = struct.unpack('<i', trama)[0]
+        trama = message[tramacursor:tramacursor + 1]
+        tramacursor = tramacursor + 1
+        bytes = struct.unpack('<b', trama)[0]
+        # bytes = int.from_bytes(trama[0:9], byteorder='little')
+        size = bytes
+        trama = message[tramacursor:tramacursor + bytes]
+        tramacursor = tramacursor + bytes
+        messagetext = str(trama)
+
+        # trama de mensaje que queda por decodificar
+        trama = message[tramacursor:]
+        tramaMsg = binascii.hexlify(trama)
+
         # print(hex(flags & 512))
         if (flags & 512) is not 0x0:
             # Si es media imprimimos el mesaje hay tambien datos de la ubicacion de el alrchivo guardado hay que intentar sacar esto tambien
             flagsActive.append("media")
-            trama = message[tramacursor:]
-            tramaMsg = binascii.hexlify(trama)
-            fromuid = struct.unpack('<i', trama[0:4])[0]
-            c.execute('SELECT name FROM chats WHERE uid=%s' % fromuid)
-            chatsstream = c.fetchall()
-            for rowss in chatsstream:
-                usernameChats = rowss[0]
-            c.execute('SELECT name FROM users WHERE uid=%s' % fromuid)
-            chatsstream = c.fetchall()
-            for rowss in chatsstream:
-                usernameUsers = rowss[0]
-            bytes = int(binascii.hexlify(trama[8:9]), 16)
-            timestamp = struct.unpack('<i', trama[4:8])[0]
-            tramacursor = tramacursor + bytes
-            message = str(trama[9:9 + bytes])
 
-            f = open('workfile', 'a')
-            f.write(str(message))
-            f.close()
-        else:
-            # si no es media lo que hacemos el leer el los primeros bytes que nos dan informacion de el tamaño y con esto mostramos el mensaje (hay mensajes que el tamaño no esta en el mismo lugoar.. si es de mas de 256 caracteres los tamaños de los no se donde estan)
-            flagsActive.append("regularMessage")
-            trama = message[tramacursor:]
-            tramaMsg = binascii.hexlify(trama)
-            fromuid = struct.unpack('<i', trama[0:4])[0]
-            c.execute('SELECT name FROM chats WHERE uid=%s' % fromuid)
-            chatsstream = c.fetchall()
-            for rowss in chatsstream:
-                usernameChats = rowss[0]
-            c.execute('SELECT name FROM users WHERE uid=%s' % fromuid)
-            chatsstream = c.fetchall()
-            # conn.commit()
-            for rowss in chatsstream:
-                usernameUsers = rowss[0]
-            timestamp = struct.unpack('<i', trama[4:8])[0]
-            tramacursor = tramacursor + 32
-            bytes = int(binascii.hexlify(trama[8:9]), 16)
-            # bytes = int.from_bytes(trama[0:9], byteorder='little')
-            size = bytes
-            tramacursor = tramacursor + bytes
-            message = str(trama[9:9 + bytes])
 
         # print(hex(flags & 64))
         if (flags & 64) is not 0x0:
@@ -309,7 +307,7 @@ def decodeMsg(c, conn, message):
         if (flags & 131072) is not 0x0:
             flagsActive.append("grouped_id")
 
-        texto = (message.replace("\00", "")).decode('utf-8', 'ignore')
+        texto = (messagetext.replace("\00", "")).decode('utf-8', 'ignore')
         return([hex(header),messagetype,str(flagsActive),str(ids),str(tramaMsg),size,str(texto).strip(),date,timestamp,fromuid,fwd_from_name,fwd_id_name,usernameUsers,usernameChats])
     else:
         messagetype = "Other"
